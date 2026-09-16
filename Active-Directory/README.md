@@ -4,21 +4,9 @@ This folder contains scripts for Active Directory maintenance, remediation, and 
 
 ## Scripts
 
-### Find-ADConflicts.ps1
-Finds common AD conflicts and outputs objects requiring investigation.
+- [Find-ADConflicts](Find-ADConflicts/README.md): Finds mail and proxy address collisions between users and contacts.
+- [Update-ADUsers](Update-ADUsers/README.md): Bulk updates user attributes from an Excel workbook.
 
-### Fix-SiteAdmin.ps1
-Applies remediation steps related to AD site administration configuration.
+## Layout
 
-### Update-ADUsers.ps1
-Performs user updates in Active Directory from structured input data.
-
-## Usage
-
-Run each script from this folder, for example:
-
-```powershell
-.\Find-ADConflicts.ps1
-.\Fix-SiteAdmin.ps1
-.\Update-ADUsers.ps1
-```
+Each script directory contains the PowerShell script and a README with requirements, parameters, examples, outputs, and safety notes.

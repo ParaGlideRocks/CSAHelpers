@@ -2,6 +2,17 @@
 
 This directory contains PowerShell scripts for managing and auditing Microsoft Exchange Online (EXO) configurations, DNS records, and migration tasks.
 
+## Script Guides
+
+- [Dump-EXOBasicAuthReport](Dump-EXOBasicAuthReport/README.md)
+- [Export-DNSRecords](Export-DNSRecords/README.md)
+- [Export-DNSReport](Export-DNSReport/README.md)
+- [Export-ExchangeConfig](Export-ExchangeConfig/README.md)
+- [Remove-InvalidSMTP](Remove-InvalidSMTP/README.md)
+- [Start-EXOMigrationBatch](Start-EXOMigrationBatch/README.md)
+
+Each script now resides in its own directory. The guides above contain the current requirements, parameters, usage, outputs, and safety notes.
+
 ## Scripts
 
 ### 1. Export-DNSRecords.ps1
@@ -22,8 +33,8 @@ Exports MX, SPF, and DMARC DNS records for a list of domains from a CSV file.
 
 **Example:**
 ```powershell
-.\Export-DNSRecords.ps1 -CsvPath .\domains.csv
-.\Export-DNSRecords.ps1 -CsvPath .\domains.csv -OutputPath .\dns_export.json -DnsServer 8.8.8.8
+.\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath .\domains.csv
+.\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath .\domains.csv -OutputPath .\dns_export.json -DnsServer 8.8.8.8
 ```
 
 **Output Schema:**
@@ -82,8 +93,8 @@ Generates a styled, searchable HTML report from DNS records exported by `Export-
 
 **Example:**
 ```powershell
-.\Export-DNSReport.ps1 -JsonPath .\20260618-185157_DNSRecordsExport.json
-.\Export-DNSReport.ps1 -JsonPath .\dns_export.json -OutputPath .\report.html
+.\Export-DNSReport\Export-DNSReport.ps1 -JsonPath .\20260618-185157_DNSRecordsExport.json
+.\Export-DNSReport\Export-DNSReport.ps1 -JsonPath .\dns_export.json -OutputPath .\report.html
 ```
 
 **Report Sections:**
@@ -111,8 +122,8 @@ Exports Exchange Online configuration and mailbox settings for auditing and back
 
 **Example:**
 ```powershell
-.\Export-ExchangeConfig.ps1
-.\Export-ExchangeConfig.ps1 -OutputPath .\exchange_config.json
+.\Export-ExchangeConfig\Export-ExchangeConfig.ps1 -Servers EX01
+.\Export-ExchangeConfig\Export-ExchangeConfig.ps1 -Servers EX01 -GenerateHtmlReport
 ```
 
 ---
@@ -132,7 +143,7 @@ Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
 **Example:**
 ```powershell
-.\Remove-InvalidSMTP.ps1
+.\Remove-InvalidSMTP\Remove-InvalidSMTP.ps1 -UserFile C:\Data\Users.txt -InvalidDomains olddomain.com -WhatIf
 ```
 
 ---
@@ -151,7 +162,7 @@ Manages and initiates Exchange Online migration batches.
 
 **Example:**
 ```powershell
-.\Start-EXOMigrationBatch.ps1
+.\Start-EXOMigrationBatch\Start-EXOMigrationBatch.ps1 -UserFile C:\Migration\Users.txt -MigrationEndpoint OnpremEndpoint -TargetDeliveryDomain contoso.mail.onmicrosoft.com -WhatIf
 ```
 
 ---
@@ -171,12 +182,12 @@ northwindtraders.com
 
 $domains | Set-Content -Path domains.csv
 
-.\Export-DNSRecords.ps1 -CsvPath domains.csv
+.\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath domains.csv
 
 # Step 2: Generate HTML report
 $jsonFile = Get-ChildItem -Filter "*_DNSRecordsExport.json" | Select-Object -First 1 -ExpandProperty FullName
 
-.\Export-DNSReport.ps1 -JsonPath $jsonFile
+.\Export-DNSReport\Export-DNSReport.ps1 -JsonPath $jsonFile
 
 # Step 3: Open report in browser
 Invoke-Item .\DNSReport.html
@@ -186,7 +197,7 @@ Invoke-Item .\DNSReport.html
 
 ```powershell
 # Query specific DNS server (useful for validating zone updates)
-.\Export-DNSRecords.ps1 -CsvPath domains.csv -DnsServer ns1.yourdomain.com
+.\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath domains.csv -DnsServer ns1.yourdomain.com
 ```
 
 ---
@@ -225,8 +236,8 @@ Invoke-Item .\DNSReport.html
 For issues or questions about these scripts, please review the comment-based help:
 
 ```powershell
-Get-Help .\Export-DNSRecords.ps1 -Full
-Get-Help .\Export-DNSReport.ps1 -Full
+Get-Help .\Export-DNSRecords\Export-DNSRecords.ps1 -Full
+Get-Help .\Export-DNSReport\Export-DNSReport.ps1 -Full
 ```
 
 ## License

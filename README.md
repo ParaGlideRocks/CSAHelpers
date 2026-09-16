@@ -1,36 +1,32 @@
 # CSAHelpers
 
-PowerShell helper scripts organized by platform and workload.
+PowerShell helper scripts organized by workload. Each script has its own directory and README so it can be documented and versioned independently.
 
-## Repository Sections
+## Active Directory
 
-## 1. Windows Server
-Folder: [Windows-Server](Windows-Server)
+- [Find-ADConflicts](Active-Directory/Find-ADConflicts/README.md)
+- [Update-ADUsers](Active-Directory/Update-ADUsers/README.md)
 
-Contains Windows diagnostics and event collection scripts:
-- [Windows-Server/Collect-WindowsEvents.ps1](Windows-Server/Collect-WindowsEvents.ps1)
-- [Windows-Server/Detect-SecureBootCertUpdateStatus.ps1](Windows-Server/Detect-SecureBootCertUpdateStatus.ps1)
+Section index: [Active-Directory/README.md](Active-Directory/README.md)
 
-## 2. Exchange
-Folder: [Exchange](Exchange)
+## Exchange
 
-Contains Exchange Online and DNS reporting scripts:
-- [Exchange/Export-DNSRecords.ps1](Exchange/Export-DNSRecords.ps1)
-- [Exchange/Export-DNSReport.ps1](Exchange/Export-DNSReport.ps1)
-- [Exchange/Export-ExchangeConfig.ps1](Exchange/Export-ExchangeConfig.ps1)
-- [Exchange/Remove-InvalidSMTP.ps1](Exchange/Remove-InvalidSMTP.ps1)
-- [Exchange/Start-EXOMigrationBatch.ps1](Exchange/Start-EXOMigrationBatch.ps1)
-- [Exchange/Dump-EXOBasicAuthReport.ps1](Exchange/Dump-EXOBasicAuthReport.ps1)
+- [Dump-EXOBasicAuthReport](Exchange/Dump-EXOBasicAuthReport/README.md)
+- [Export-DNSRecords](Exchange/Export-DNSRecords/README.md)
+- [Export-DNSReport](Exchange/Export-DNSReport/README.md)
+- [Export-ExchangeConfig](Exchange/Export-ExchangeConfig/README.md)
+- [Remove-InvalidSMTP](Exchange/Remove-InvalidSMTP/README.md)
+- [Start-EXOMigrationBatch](Exchange/Start-EXOMigrationBatch/README.md)
 
 Section documentation: [Exchange/README.md](Exchange/README.md)
 
-## 3. Active Directory
-Folder: [Active-Directory](Active-Directory)
+## Windows Server
 
-Contains Active Directory maintenance and remediation scripts:
-- [Active-Directory/Find-ADConflicts.ps1](Active-Directory/Find-ADConflicts.ps1)
-- [Active-Directory/Fix-SiteAdmin.ps1](Active-Directory/Fix-SiteAdmin.ps1)
-- [Active-Directory/Update-ADUsers.ps1](Active-Directory/Update-ADUsers.ps1)
+- [Collect-WindowsEvents](Windows-Server/Collect-WindowsEvents/README.md)
+- [Detect-SecureBootCertUpdateStatus](Windows-Server/Detect-SecureBootCertUpdateStatus/README.md)
+- [Find-OOBsGuid](Windows-Server/Find-OOBsGuid/README.md)
+
+Section index: [Windows-Server/README.md](Windows-Server/README.md)
 
 ## License
 
