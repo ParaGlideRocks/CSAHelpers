@@ -1,4 +1,4 @@
-# Dump-EXOBasicAuthReport
+# Get-EXOBasicAuthReport
 
 Audits Exchange Online authentication policies and reports users for whom basic authentication may be enabled.
 
@@ -18,8 +18,8 @@ Audits Exchange Online authentication policies and reports users for whom basic 
 
 ```powershell
 Connect-ExchangeOnline
-.\Dump-EXOBasicAuthReport.ps1 -OutputPath C:\Reports
-.\Dump-EXOBasicAuthReport.ps1 -OutputPath C:\Reports -ExportFormat JSON -IncludeDetailedUserInfo
+.\Get-EXOBasicAuthReport.ps1 -OutputPath C:\Reports
+.\Get-EXOBasicAuthReport.ps1 -OutputPath C:\Reports -ExportFormat JSON -IncludeDetailedUserInfo
 ```
 
 ## Output

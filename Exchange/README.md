@@ -1,13 +1,14 @@
 # Exchange Scripts
 
-This directory contains PowerShell scripts for managing and auditing Microsoft Exchange Online (EXO) configurations, DNS records, and migration tasks.
+This directory contains PowerShell scripts for managing and auditing Microsoft Exchange Online (EXO) configurations, DNS records, email authentication, and migration tasks.
 
 ## Script Guides
 
-- [Dump-EXOBasicAuthReport](Dump-EXOBasicAuthReport/README.md)
+- [Analyze-DmarcReports](Analyze-DmarcReports/README.md)
 - [Export-DNSRecords](Export-DNSRecords/README.md)
 - [Export-DNSReport](Export-DNSReport/README.md)
 - [Export-ExchangeConfig](Export-ExchangeConfig/README.md)
+- [Get-EXOBasicAuthReport](Get-EXOBasicAuthReport/README.md)
 - [Remove-InvalidSMTP](Remove-InvalidSMTP/README.md)
 - [Start-EXOMigrationBatch](Start-EXOMigrationBatch/README.md)
 
@@ -15,7 +16,38 @@ Each script now resides in its own directory. The guides above contain the curre
 
 ## Scripts
 
-### 1. Export-DNSRecords.ps1
+### 1. Analyze-DmarcReports.ps1
+
+Parses DMARC aggregate (RUA) reports and summarises authentication results in an Excel workbook.
+
+**Features:**
+- Expands `.gz` and `.zip` attachments automatically
+- Aggregates the sources that fail DMARC by IP address
+- Reports SPF and DKIM alignment, DKIM selector, and policy override reasons
+- Traces every row back to its originating report file
+- Falls back to CSV output when the `ImportExcel` module is unavailable
+
+**Parameters:**
+- `-Path` (Optional): Folder containing the reports (defaults to the current directory)
+- `-OutFile` (Optional): Output XLSX file path (defaults to a timestamped file in the source folder)
+- `-ResolveHostnames` (Optional): Resolves reverse DNS for the failing sources
+- `-SkipDettaglio` (Optional): Limits the detail worksheet to failing records
+- `-ReportId` (Optional): Processes only reports matching the given report id
+
+**Example:**
+```powershell
+.\Analyze-DmarcReports\Analyze-DmarcReports.ps1 -Path C:\DMARC\raw
+.\Analyze-DmarcReports\Analyze-DmarcReports.ps1 -Path C:\DMARC\raw -SkipDettaglio -ResolveHostnames
+```
+
+**Report Sections:**
+- Riepilogo (per report: reporter, period, published policy, volumes, pass and fail counts)
+- DaVerificare (failing sources grouped by IP, ordered by volume)
+- Dettaglio (per record: source IP, disposition, SPF and DKIM alignment, sender identifiers)
+
+---
+
+### 2. Export-DNSRecords.ps1
 
 Exports MX, SPF, and DMARC DNS records for a list of domains from a CSV file.
 
@@ -75,7 +107,7 @@ Exports MX, SPF, and DMARC DNS records for a list of domains from a CSV file.
 
 ---
 
-### 2. Export-DNSReport.ps1
+### 3. Export-DNSReport.ps1
 
 Generates a styled, searchable HTML report from DNS records exported by `Export-DNSRecords.ps1`.
 
@@ -107,7 +139,7 @@ Generates a styled, searchable HTML report from DNS records exported by `Export-
 
 ---
 
-### 3. Export-ExchangeConfig.ps1
+### 4. Export-ExchangeConfig.ps1
 
 Exports Exchange Online configuration and mailbox settings for auditing and backup purposes.
 
@@ -128,7 +160,34 @@ Exports Exchange Online configuration and mailbox settings for auditing and back
 
 ---
 
-### 4. Remove-InvalidSMTP.ps1
+### 5. Get-EXOBasicAuthReport.ps1
+
+Audits Exchange Online authentication policies and reports users for whom basic authentication may be enabled.
+
+**Features:**
+- Reports organization-level authentication settings
+- Enumerates all authentication policies and their configurations
+- Identifies users whose policy leaves basic auth enabled for any protocol
+- Reports the default authentication policy assignment
+- Produces summary statistics and timestamped output files
+
+**Parameters:**
+- `-OutputPath` (Optional): Destination directory (defaults to the current directory)
+- `-ExportFormat` (Optional): `CSV`, `JSON`, or `XML` (defaults to `CSV`)
+- `-IncludeDetailedUserInfo` (Optional): Includes additional user details in the report
+
+**Example:**
+```powershell
+Connect-ExchangeOnline
+.\Get-EXOBasicAuthReport\Get-EXOBasicAuthReport.ps1 -OutputPath C:\Reports
+.\Get-EXOBasicAuthReport\Get-EXOBasicAuthReport.ps1 -OutputPath C:\Reports -ExportFormat JSON -IncludeDetailedUserInfo
+```
+
+**Note:** The script is read-only, but its output may contain security-sensitive tenant information.
+
+---
+
+### 6. Remove-InvalidSMTP.ps1
 
 Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
@@ -148,7 +207,7 @@ Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
 ---
 
-### 5. Start-EXOMigrationBatch.ps1
+### 7. Start-EXOMigrationBatch.ps1
 
 Manages and initiates Exchange Online migration batches.
 
@@ -200,6 +259,19 @@ Invoke-Item .\DNSReport.html
 .\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath domains.csv -DnsServer ns1.yourdomain.com
 ```
 
+### Example 3: DMARC Enforcement Readiness
+
+```powershell
+# Step 1: Confirm the policy currently published for each domain
+.\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath domains.csv
+
+# Step 2: Analyse the aggregate reports collected from the RUA mailbox
+.\Analyze-DmarcReports\Analyze-DmarcReports.ps1 -Path C:\DMARC\raw -SkipDettaglio -ResolveHostnames
+
+# Step 3: Review the DaVerificare worksheet and align any legitimate sender
+# before moving a domain from p=quarantine to p=reject
+```
+
 ---
 
 ## Prerequisites
@@ -225,9 +297,11 @@ Invoke-Item .\DNSReport.html
 
 | Script | Version | Last Updated | Changes |
 |--------|---------|--------------|---------|
+| Analyze-DmarcReports.ps1 | 1.2.0 | 2026-09-21 | Report ID filter, originating file columns |
 | Export-DNSRecords.ps1 | 1.2.0 | 2026-06-18 | Single nameserver query, per-record TTL |
 | Export-DNSReport.ps1 | 1.2.0 | 2026-06-18 | SPF filtering, TTL columns |
-| Export-ExchangeConfig.ps1 | 1.0.0 | - | Initial release |
+| Export-ExchangeConfig.ps1 | 3.0.0 | 2026-09-21 | HTML report generation, report-only mode, horizontal scrolling fix |
+| Get-EXOBasicAuthReport.ps1 | 1.0.0 | 2026-09-21 | Initial release |
 | Remove-InvalidSMTP.ps1 | 1.0.0 | - | Initial release |
 | Start-EXOMigrationBatch.ps1 | 1.0.0 | - | Initial release |
 
@@ -236,6 +310,7 @@ Invoke-Item .\DNSReport.html
 For issues or questions about these scripts, please review the comment-based help:
 
 ```powershell
+Get-Help .\Analyze-DmarcReports\Analyze-DmarcReports.ps1 -Full
 Get-Help .\Export-DNSRecords\Export-DNSRecords.ps1 -Full
 Get-Help .\Export-DNSReport\Export-DNSReport.ps1 -Full
 ```

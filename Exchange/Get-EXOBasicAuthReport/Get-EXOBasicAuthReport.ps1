@@ -29,6 +29,7 @@
     
 .NOTES
     Author: Generated for Exchange Online Basic Auth Reporting
+    Version: 1.0.0
     Requires: Exchange Online PowerShell V3 module
     Permissions: Exchange Administrator or Global Reader role minimum
 #>
