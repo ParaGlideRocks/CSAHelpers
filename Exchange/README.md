@@ -5,6 +5,7 @@ This directory contains PowerShell scripts for managing and auditing Microsoft E
 ## Script Guides
 
 - [Analyze-DmarcReports](Analyze-DmarcReports/README.md)
+- [Export-DmarcAttachments](Export-DmarcAttachments/README.md)
 - [Export-DNSRecords](Export-DNSRecords/README.md)
 - [Export-DNSReport](Export-DNSReport/README.md)
 - [Export-ExchangeConfig](Export-ExchangeConfig/README.md)
@@ -47,7 +48,38 @@ Parses DMARC aggregate (RUA) reports and summarises authentication results in an
 
 ---
 
-### 2. Export-DNSRecords.ps1
+### 2. Export-DmarcAttachments.ps1
+
+Saves DMARC aggregate report attachments from an Outlook folder to disk.
+
+**Features:**
+- Exports `.gz`, `.zip`, and `.xml` attachments from a mail folder
+- Restricts messages by date through MAPI, so large RUA mailboxes stay workable
+- Prefixes every file with the message timestamp to prevent name collisions
+- Skips files already on disk, allowing incremental re-runs
+- Optionally moves the processed messages to another folder
+- Detects an elevated session before doing any work
+
+**Parameters:**
+- `-FolderPath` (Optional): Folder path from the mailbox root (prompts when omitted)
+- `-OutputPath` (Optional): Destination directory (defaults to `.\DmarcReports`)
+- `-Since` / `-Until` (Optional): Restricts the messages by received date
+- `-Extensions` (Optional): Attachment extensions to export (defaults to `gz`, `zip`, `xml`)
+- `-MoveToFolder` (Optional): Existing folder the exported messages are moved to
+- `-IncludeSubfolders` (Optional): Also processes subfolders
+- `-Overwrite` (Optional): Re-exports attachments already present
+
+**Example:**
+```powershell
+.\Export-DmarcAttachments\Export-DmarcAttachments.ps1
+.\Export-DmarcAttachments\Export-DmarcAttachments.ps1 -FolderPath "dmarc_rua@contoso.com\Inbox" -OutputPath C:\DMARC\raw
+```
+
+**Note:** Requires Outlook classic running at the same integrity level as the script. An elevated session fails with `CO_E_SERVER_EXEC_FAILURE` (0x80080005).
+
+---
+
+### 3. Export-DNSRecords.ps1
 
 Exports MX, SPF, and DMARC DNS records for a list of domains from a CSV file.
 
@@ -107,7 +139,7 @@ Exports MX, SPF, and DMARC DNS records for a list of domains from a CSV file.
 
 ---
 
-### 3. Export-DNSReport.ps1
+### 4. Export-DNSReport.ps1
 
 Generates a styled, searchable HTML report from DNS records exported by `Export-DNSRecords.ps1`.
 
@@ -139,7 +171,7 @@ Generates a styled, searchable HTML report from DNS records exported by `Export-
 
 ---
 
-### 4. Export-ExchangeConfig.ps1
+### 5. Export-ExchangeConfig.ps1
 
 Exports Exchange Online configuration and mailbox settings for auditing and backup purposes.
 
@@ -160,7 +192,7 @@ Exports Exchange Online configuration and mailbox settings for auditing and back
 
 ---
 
-### 5. Get-EXOBasicAuthReport.ps1
+### 6. Get-EXOBasicAuthReport.ps1
 
 Audits Exchange Online authentication policies and reports users for whom basic authentication may be enabled.
 
@@ -187,7 +219,7 @@ Connect-ExchangeOnline
 
 ---
 
-### 6. Remove-InvalidSMTP.ps1
+### 7. Remove-InvalidSMTP.ps1
 
 Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
@@ -207,7 +239,7 @@ Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
 ---
 
-### 7. Start-EXOMigrationBatch.ps1
+### 8. Start-EXOMigrationBatch.ps1
 
 Manages and initiates Exchange Online migration batches.
 
@@ -265,10 +297,13 @@ Invoke-Item .\DNSReport.html
 # Step 1: Confirm the policy currently published for each domain
 .\Export-DNSRecords\Export-DNSRecords.ps1 -CsvPath domains.csv
 
-# Step 2: Analyse the aggregate reports collected from the RUA mailbox
+# Step 2: Export the aggregate reports from the RUA mailbox
+.\Export-DmarcAttachments\Export-DmarcAttachments.ps1 -FolderPath "dmarc_rua@contoso.com\Inbox" -OutputPath C:\DMARC\raw
+
+# Step 3: Analyse the exported reports
 .\Analyze-DmarcReports\Analyze-DmarcReports.ps1 -Path C:\DMARC\raw -SkipDettaglio -ResolveHostnames
 
-# Step 3: Review the DaVerificare worksheet and align any legitimate sender
+# Step 4: Review the DaVerificare worksheet and align any legitimate sender
 # before moving a domain from p=quarantine to p=reject
 ```
 
@@ -297,7 +332,8 @@ Invoke-Item .\DNSReport.html
 
 | Script | Version | Last Updated | Changes |
 |--------|---------|--------------|---------|
-| Analyze-DmarcReports.ps1 | 1.2.0 | 2026-09-21 | Report ID filter, originating file columns |
+| Analyze-DmarcReports.ps1 | 1.2.0 | 2026-09-21 | Report id filter, originating file columns |
+| Export-DmarcAttachments.ps1 | 1.0.0 | 2026-09-21 | Initial release |
 | Export-DNSRecords.ps1 | 1.2.0 | 2026-06-18 | Single nameserver query, per-record TTL |
 | Export-DNSReport.ps1 | 1.2.0 | 2026-06-18 | SPF filtering, TTL columns |
 | Export-ExchangeConfig.ps1 | 3.0.0 | 2026-09-21 | HTML report generation, report-only mode, horizontal scrolling fix |
