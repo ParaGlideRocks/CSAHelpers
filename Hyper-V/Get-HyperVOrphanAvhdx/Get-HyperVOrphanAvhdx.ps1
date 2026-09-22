@@ -236,6 +236,7 @@ function Format-Size {
     $value = [double]$Bytes
     $i = 0
     while ($value -ge 1024 -and $i -lt ($units.Count - 1)) { $value /= 1024; $i++ }
+    if ($i -eq 0) { return ('{0} {1}' -f [int64]$value, $units[$i]) }
     return ('{0:N1} {1}' -f $value, $units[$i])
 }
 
@@ -965,8 +966,14 @@ function Invoke-AvhdAnalysis {
     $health = foreach ($v in $TargetVm) { Get-VmHealthReport -Vm $v -Chain $owner.Chains }
     $health = @($health)
 
-    $orphanBytes = ($orphans | Measure-Object -Property SizeBytes -Sum).Sum
-    if (-not $orphanBytes) { $orphanBytes = 0 }
+    # Measure-Object emits nothing at all for an empty pipeline, so reading
+    # .Sum off the result throws under Set-StrictMode. Only measure when there
+    # is something to measure.
+    $orphanBytes = 0
+    if ($orphans.Count -gt 0) {
+        $measured = ($orphans | Measure-Object -Property SizeBytes -Sum).Sum
+        if ($measured) { $orphanBytes = $measured }
+    }
 
     $ghostCount = 0
     foreach ($h in $health) { if ($h.GhostCheckpoints) { $ghostCount += @($h.GhostCheckpoints -split ';').Count } }
