@@ -1022,18 +1022,18 @@ function Test-Prerequisite {
 
 function Select-TargetVm {
     param(
-        [Parameter(Mandatory)][object[]]$AllVm,
+        [Parameter(Mandatory)][object[]]$Inventory,
         [string[]]$Name,
         [switch]$All,
         [switch]$Interactive
     )
 
-    if ($All) { return , $AllVm }
+    if ($All) { return , $Inventory }
 
     if ($Name) {
         $selected = [System.Collections.Generic.List[object]]::new()
         foreach ($pattern in $Name) {
-            $matched = @($AllVm | Where-Object { $_.Name -like $pattern })
+            $matched = @($Inventory | Where-Object { $_.Name -like $pattern })
             if ($matched.Count -eq 0) { Write-Caution "No VM matches '$pattern'." }
             foreach ($m in $matched) {
                 if (-not ($selected | Where-Object { $_.Id -eq $m.Id })) { $selected.Add($m) }
@@ -1042,28 +1042,28 @@ function Select-TargetVm {
         return , $selected.ToArray()
     }
 
-    if (-not $Interactive) { return , $AllVm }
+    if (-not $Interactive) { return , $Inventory }
 
     Write-Section 'VM selection'
-    for ($i = 0; $i -lt $AllVm.Count; $i++) {
-        Write-Line ('{0,3}) {1}  [{2}]' -f ($i + 1), $AllVm[$i].Name, $AllVm[$i].State)
+    for ($i = 0; $i -lt $Inventory.Count; $i++) {
+        Write-Line ('{0,3}) {1}  [{2}]' -f ($i + 1), $Inventory[$i].Name, $Inventory[$i].State)
     }
     Write-Line '  a) all VMs on this host'
 
     while ($true) {
         $raw = (Read-Host "`nSelect VM (number, comma separated list, or 'a')").Trim()
-        if ($raw -match '^(a|all)$') { return , $AllVm }
+        if ($raw -match '^(a|all)$') { return , $Inventory }
 
         $picked = [System.Collections.Generic.List[object]]::new()
         $bad = $false
         foreach ($token in ($raw -split '[,\s]+' | Where-Object { $_ })) {
             $n = 0
-            if (-not [int]::TryParse($token, [ref]$n) -or $n -lt 1 -or $n -gt $AllVm.Count) { $bad = $true; break }
-            $vm = $AllVm[$n - 1]
+            if (-not [int]::TryParse($token, [ref]$n) -or $n -lt 1 -or $n -gt $Inventory.Count) { $bad = $true; break }
+            $vm = $Inventory[$n - 1]
             if (-not ($picked | Where-Object { $_.Id -eq $vm.Id })) { $picked.Add($vm) }
         }
         if (-not $bad -and $picked.Count -gt 0) { return , $picked.ToArray() }
-        Write-Caution "Invalid selection. Enter numbers between 1 and $($AllVm.Count), or 'a'."
+        Write-Caution "Invalid selection. Enter numbers between 1 and $($Inventory.Count), or 'a'."
     }
 }
 
@@ -1100,7 +1100,6 @@ function Invoke-Main {
     )
 
     $script:ExitCode = 0
-    $interactive = $Interactive
 
     $workDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).ProviderPath }
     $reportDir = if ($ReportPath) { $ReportPath } else { $workDir }
@@ -1123,20 +1122,24 @@ function Invoke-Main {
 
         if (-not (Test-Prerequisite)) { $script:ExitCode = 2; return }
 
-        $allVm = @()
-        try { $allVm = @(Get-VM -ErrorAction Stop | Sort-Object Name) }
+        # Note: this local must NOT be called $allVm. PowerShell variable names
+        # are case-insensitive, so $allVm and the [switch]$AllVM parameter would
+        # be the same variable and the assignment would clobber the switch.
+        $hostVm = @()
+        try { $hostVm = @(Get-VM -ErrorAction Stop | Sort-Object Name) }
         catch { Write-Problem "Cannot enumerate VMs: $($_.Exception.Message)"; $script:ExitCode = 2; return }
 
-        if ($allVm.Count -eq 0) { Write-Caution 'No VM found on this host.'; return }
+        if ($hostVm.Count -eq 0) { Write-Caution 'No VM found on this host.'; return }
 
-        $targets = Select-TargetVm -AllVm $allVm -Name $VMName -All:$AllVM -Interactive:$interactive
+        $targets = Select-TargetVm -Inventory $hostVm -Name $VMName -All:$AllVM -Interactive:$Interactive
         if ($targets.Count -eq 0) { Write-Problem 'No VM selected.'; $script:ExitCode = 2; return }
         Write-Ok ("Selected: {0}" -f (($targets | ForEach-Object { $_.Name }) -join ', '))
 
-        $formats = @($ExportFormat)
-        if ($interactive) { $formats = Select-ExportFormat }
+        # @($null) is a one-element array, so filter before testing Count.
+        $formats = @($ExportFormat | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($Interactive) { $formats = @(Select-ExportFormat) }
 
-        $result = Invoke-AvhdAnalysis -TargetVm $targets -AllHostVm $allVm `
+        $result = Invoke-AvhdAnalysis -TargetVm $targets -AllHostVm $hostVm `
             -ExtraPath $AdditionalSearchPath -SkipLock:$SkipLockCheck
 
         Write-ConsoleReport -Result $result
