@@ -20,6 +20,12 @@ Section index: [Active-Directory/README.md](Active-Directory/README.md)
 
 Section documentation: [Exchange/README.md](Exchange/README.md)
 
+## Hyper-V
+
+- [Get-HyperVOrphanAvhdx](Hyper-V/Get-HyperVOrphanAvhdx/README.md)
+
+Section index: [Hyper-V/README.md](Hyper-V/README.md)
+
 ## Windows Server
 
 - [Collect-WindowsEvents](Windows-Server/Collect-WindowsEvents/README.md)
