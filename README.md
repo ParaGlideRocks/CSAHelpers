@@ -11,14 +11,16 @@ Section index: [Active-Directory/README.md](Active-Directory/README.md)
 
 ## Exchange
 
-- [Dump-EXOBasicAuthReport](Exchange/Dump-EXOBasicAuthReport/README.md)
+- [Analyze-DmarcReports](Exchange/Analyze-DmarcReports/README.md)
+- [Export-DmarcAttachments](Exchange/Export-DmarcAttachments/README.md)
 - [Export-DNSRecords](Exchange/Export-DNSRecords/README.md)
 - [Export-DNSReport](Exchange/Export-DNSReport/README.md)
 - [Export-ExchangeConfig](Exchange/Export-ExchangeConfig/README.md)
+- [Get-EXOBasicAuthReport](Exchange/Get-EXOBasicAuthReport/README.md)
 - [Remove-InvalidSMTP](Exchange/Remove-InvalidSMTP/README.md)
 - [Start-EXOMigrationBatch](Exchange/Start-EXOMigrationBatch/README.md)
 
-Section documentation: [Exchange/README.md](Exchange/README.md)
+Section index: [Exchange/README.md](Exchange/README.md)
 
 ## Hyper-V
 
