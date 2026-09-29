@@ -17,6 +17,7 @@ Section index: [Active-Directory/README.md](Active-Directory/README.md)
 - [Export-DNSReport](Exchange/Export-DNSReport/README.md)
 - [Export-ExchangeConfig](Exchange/Export-ExchangeConfig/README.md)
 - [Get-EXOBasicAuthReport](Exchange/Get-EXOBasicAuthReport/README.md)
+- [New-RoomMailboxes](Exchange/New-RoomMailboxes/README.md)
 - [Remove-InvalidSMTP](Exchange/Remove-InvalidSMTP/README.md)
 - [Start-EXOMigrationBatch](Exchange/Start-EXOMigrationBatch/README.md)
 

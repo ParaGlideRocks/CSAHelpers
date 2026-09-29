@@ -10,6 +10,7 @@ This directory contains PowerShell scripts for managing and auditing Microsoft E
 - [Export-DNSReport](Export-DNSReport/README.md)
 - [Export-ExchangeConfig](Export-ExchangeConfig/README.md)
 - [Get-EXOBasicAuthReport](Get-EXOBasicAuthReport/README.md)
+- [New-RoomMailboxes](New-RoomMailboxes/README.md)
 - [Remove-InvalidSMTP](Remove-InvalidSMTP/README.md)
 - [Start-EXOMigrationBatch](Start-EXOMigrationBatch/README.md)
 
@@ -219,7 +220,41 @@ Connect-ExchangeOnline
 
 ---
 
-### 7. Remove-InvalidSMTP.ps1
+### 7. New-RoomMailboxes.ps1
+
+Provisions Exchange Online room mailboxes from a room inventory CSV and configures Microsoft Places metadata, booking policy, and room lists.
+
+**Features:**
+- Creates missing room mailboxes with deterministic aliases
+- Updates existing rooms instead of duplicating them
+- Configures Places attributes such as city, building, floor, capacity, and devices
+- Configures calendar processing, including optional approval delegates
+- Creates and populates Room Finder room lists grouped by city/building
+- Includes a simulation mode for dry runs
+
+**Parameters:**
+- `-CsvPath` (Optional): Semicolon-delimited room inventory CSV (defaults to `.\sample-rooms.csv`)
+- `-Domain` (Optional): SMTP domain for room mailbox and room list addresses
+- `-Prefix` (Optional): Prefix for aliases and room list names
+- `-DefaultCountry` (Optional): Country code when the CSV has no value (defaults to `IT`)
+- `-HeaderRow` (Optional): CSV header row number
+- `-PropagationWaitSeconds`, `-MaxAttempts`, `-RetryDelaySeconds` (Optional): Propagation retry controls
+- `-MaxRoomsPerList` (Optional): Maximum rooms per room list
+- `-SkipRoomLists` (Optional): Skips room list creation and membership updates
+- `-WhatIfProvisioning` (Optional): Runs without changing the tenant
+
+**Example:**
+```powershell
+Connect-ExchangeOnline
+.\New-RoomMailboxes\New-RoomMailboxes.ps1 -CsvPath .\New-RoomMailboxes\sample-rooms.csv -Domain contoso.com -WhatIfProvisioning
+.\New-RoomMailboxes\New-RoomMailboxes.ps1 -CsvPath C:\Data\rooms.csv -Domain contoso.com
+```
+
+**Output:** A timestamped execution log and CSV report are written next to the script.
+
+---
+
+### 8. Remove-InvalidSMTP.ps1
 
 Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
@@ -239,7 +274,7 @@ Removes invalid or duplicate SMTP addresses from Exchange Online mailboxes.
 
 ---
 
-### 8. Start-EXOMigrationBatch.ps1
+### 9. Start-EXOMigrationBatch.ps1
 
 Manages and initiates Exchange Online migration batches.
 
@@ -338,6 +373,7 @@ Invoke-Item .\DNSReport.html
 | Export-DNSReport.ps1 | 1.2.0 | 2026-06-18 | SPF filtering, TTL columns |
 | Export-ExchangeConfig.ps1 | 3.0.0 | 2026-09-21 | HTML report generation, report-only mode, horizontal scrolling fix |
 | Get-EXOBasicAuthReport.ps1 | 1.0.0 | 2026-09-21 | Initial release |
+| New-RoomMailboxes.ps1 | 1.0.0 | 2026-09-29 | Initial release |
 | Remove-InvalidSMTP.ps1 | 1.0.0 | - | Initial release |
 | Start-EXOMigrationBatch.ps1 | 1.0.0 | - | Initial release |
 
@@ -349,6 +385,7 @@ For issues or questions about these scripts, please review the comment-based hel
 Get-Help .\Analyze-DmarcReports\Analyze-DmarcReports.ps1 -Full
 Get-Help .\Export-DNSRecords\Export-DNSRecords.ps1 -Full
 Get-Help .\Export-DNSReport\Export-DNSReport.ps1 -Full
+Get-Help .\New-RoomMailboxes\New-RoomMailboxes.ps1 -Full
 ```
 
 ## License

@@ -1,0 +1,26 @@
+﻿CountryOrRegion;City;Building;Floor;DisplayName;ResourceCapacity;AudioDeviceName;VideoDeviceName;DisplayDeviceName;Description;Planimetry;RequiresApproval;Approvers
+IT;Milano Nord;Edificio A;pt;ACME - Milano Nord - Sala Verdi;12;YES;YES;NO;Sala riunioni piano terra;;NO;
+IT;Milano Nord;Edificio A;pt;ACME - Milano Nord - Sala Rossini;8;YES;NO;NO;;;NO;
+IT;Milano Nord;Edificio A;p1;ACME - Milano Nord - Sala Puccini;20;YES;YES;YES;Teams Rooms;;NO;
+IT;Milano Nord;Edificio A;p1;ACME - Milano Nord - Stanza 4;6;NO;YES;NO;;;NO;
+IT;Milano Nord;Edificio A;p2;ACME - Milano Nord - Stanza 4 (p2);6;NO;YES;NO;Nome ripetuto su piano diverso;;NO;
+IT;Milano Nord;Edificio A;p2;ACME - Milano Nord - Sala Consiglio;30;YES;YES;YES;;;YES;laura.bianchi@contoso.com, marco.ferri@contoso.com
+IT;Milano Nord;Edificio A;p3;ACME - Milano Nord - Showroom;;YES;YES;NO;Capienza non indicata;;YES;laura.bianchi@contoso.com
+IT;Milano Nord;Edificio B;pt;ACME - Milano Nord - Sala Galileo;10;NO;NO;NO;;;NO;
+IT;Milano Nord;Edificio B;p1;ACME - Milano Nord - Sala Fermi;14;YES;YES;NO;;;NO;
+IT;Milano Nord;Edificio B;p1;ACME - Milano Nord - Box vetrato;4;NO;NO;NO;Sala informale;;NO;
+IT;Torino Centro;Sede Unica;-1;ACME - Torino Centro - Archivio Meeting;6;NO;NO;NO;Piano interrato;;NO;
+IT;Torino Centro;Sede Unica;pt;ACME - Torino Centro - Auditorium;40-60;YES;YES;YES;Capienza da confermare;;YES;giulia.neri@contoso.com
+IT;Torino Centro;sede unica;pt;ACME - Torino Centro - Sala Mole;16;YES;YES;NO;Edificio scritto in minuscolo;;NO;
+IT;Torino Centro;Sede Unica;p1;ACME - Torino Centro - Sala Po;12;YES;YES;NO;;;NO;
+IT;Torino Centro;Sede Unica;p2;ACME - Torino Centro - Sala Dora;;NO;YES;NO;;;NO;
+IT;Roma Sud;Palazzina Direzione;pt;ACME - Roma Sud - Reception Room;8;YES;NO;NO;;;NO;
+IT;Roma Sud;Palazzina Direzione;p1;ACME - Roma Sud - Sala Tevere;18;YES;YES;YES;;;YES;paolo.conti@contoso.com
+IT;Roma Sud;Palazzina direzione;p1;ACME - Roma Sud - President Room (Sala Aniene);24;YES;YES;YES;Edificio con variante di maiuscole;;YES;paolo.conti@contoso.com
+IT;Roma Sud;Palazzina Direzione;p2;ACME - Roma Sud - Sala Proiezioni;35;YES;YES;YES;;;NO;
+IT;Roma Sud;Palazzina Direzione;p10;ACME - Roma Sud - Sky Lounge;10;NO;YES;;Piano a due cifre, proiettore non indicato;;NO;
+IT;Napoli Est;Stabilimento 1;pt;ACME - Napoli Est - Sala Formazione;25;YES;YES;NO;;;NO;
+IT;Napoli Est;Stabilimento 1;pt;ACME - Napoli Est - Sala Qualita;8;NO;NO;NO;;;NO;
+IT;Napoli Est;Stabilimento 1;p1;ACME - Napoli Est - Sala Vesuvio;14;YES;YES;NO;;;NO;
+IT;Napoli Est;Stabilimento 1;p1;ACME - Napoli Est - Sala Capri;;NO;NO;NO;;;NO;
+IT;Bologna Ovest;Principale;p1;ACME - Bologna Ovest - Sala Unica;10;YES;YES;NO;Sede con una sola sala;;NO;
