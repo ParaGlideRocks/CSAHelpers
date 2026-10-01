@@ -29,6 +29,12 @@ Section index: [Exchange/README.md](Exchange/README.md)
 
 Section index: [Hyper-V/README.md](Hyper-V/README.md)
 
+## M365
+
+- [Invoke-M365LicenseManagement](M365/Invoke-M365LicenseManagement/README.md)
+
+Section index: [M365/README.md](M365/README.md)
+
 ## Windows Server
 
 - [Collect-WindowsEvents](Windows-Server/Collect-WindowsEvents/README.md)
