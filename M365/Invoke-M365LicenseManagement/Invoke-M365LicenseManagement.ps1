@@ -268,7 +268,7 @@ function Test-GraphTransientError {
     return ($ErrorRecord.Exception.Message -match "(?i)throttl|too many requests|timeout|temporar|service unavailable")
 }
 
-function Invoke-GraphRequest {
+function Invoke-LicenseGraphRequest {
     param(
         [Parameter(Mandatory)]
         [scriptblock]$ScriptBlock,
@@ -420,7 +420,7 @@ function Update-SkuCache {
     Write-LicenseLog "Reading the SKUs subscribed by the tenant."
 
     $script:SubscribedSkus = @(
-        Invoke-GraphRequest `
+        Invoke-LicenseGraphRequest `
             -OperationName "Read subscribed SKUs" `
             -ScriptBlock { Get-MgSubscribedSku -All } |
             Sort-Object SkuPartNumber
@@ -680,7 +680,7 @@ function Get-PilotScope {
 
     if ($hasGroup) {
         $members = @(
-            Invoke-GraphRequest `
+            Invoke-LicenseGraphRequest `
                 -OperationName "Read transitive members for pilot group $PilotGroupId" `
                 -ScriptBlock { Get-MgGroupTransitiveMember -GroupId $PilotGroupId.ToString() -All }
         )
@@ -731,7 +731,7 @@ function Get-SkuAssignedUser {
     try {
         # Server-side filter: only users holding the SKU are returned.
         $users = @(
-            Invoke-GraphRequest `
+            Invoke-LicenseGraphRequest `
                 -OperationName "Search users with SKU $SkuId" `
                 -ScriptBlock {
                     Get-MgUser `
@@ -746,7 +746,7 @@ function Get-SkuAssignedUser {
     catch {
         Write-LicenseLog "Server-side filter not available ($($_.Exception.Message)). Falling back to local filtering." "WARNING"
 
-        $allUsers = Invoke-GraphRequest `
+        $allUsers = Invoke-LicenseGraphRequest `
             -OperationName "Read all users for local SKU filtering" `
             -ScriptBlock { Get-MgUser -All -Property $script:UserProperties }
 
@@ -1257,7 +1257,7 @@ function Invoke-LicenseReplacement {
                     continue
                 }
 
-                Invoke-GraphRequest `
+                Invoke-LicenseGraphRequest `
                     -OperationName "Remove source license from $($item.UserPrincipalName)" `
                     -ScriptBlock {
                         Set-MgUserLicense `
@@ -1306,7 +1306,7 @@ function Invoke-LicenseReplacement {
                     continue
                 }
 
-                Invoke-GraphRequest `
+                Invoke-LicenseGraphRequest `
                     -OperationName "Replace license for $($item.UserPrincipalName)" `
                     -ScriptBlock {
                         Set-MgUserLicense `
@@ -1321,7 +1321,7 @@ function Invoke-LicenseReplacement {
             }
 
             # Post-operation verification.
-            $updatedUser = Invoke-GraphRequest `
+            $updatedUser = Invoke-LicenseGraphRequest `
                 -OperationName "Verify license replacement for $($item.UserPrincipalName)" `
                 -ScriptBlock {
                     Get-MgUser `
@@ -1539,7 +1539,7 @@ function Restore-LicenseBackup {
                 continue
             }
 
-            Invoke-GraphRequest `
+            Invoke-LicenseGraphRequest `
                 -OperationName "Restore licenses for $($user.UserPrincipalName)" `
                 -ScriptBlock {
                     Set-MgUserLicense `
