@@ -28,6 +28,12 @@ The script checks for required Graph modules and installs missing modules for th
 - `DisabledPlansMode`: Controls target license service plans. `Preserve` carries matching disabled plans from the source license; `None` assigns the target license with all plans enabled.
 - `IncludeDisabledAccounts`: Includes disabled accounts in replacement operations.
 - `IncludeInactiveSkus`: Lists SKUs whose capability status is not `Enabled` or `Warning`.
+- `MaxRetryCount`: Retries transient Microsoft Graph failures such as throttling or temporary service errors. Defaults to `4`.
+- `RetryBaseDelaySeconds`: Base delay for exponential retry backoff. Defaults to `2`.
+- `RequestDelayMilliseconds`: Delay after each write operation to reduce Graph request pressure. Defaults to `250`.
+- `BatchSize`: Number of write operations before pausing. Defaults to `20`; use `0` to disable batch pauses.
+- `BatchPauseSeconds`: Pause after each completed batch. Defaults to `10`.
+- `WhatIf`: Performs the replacement or restore pre-check path without writing license changes.
 
 ## Usage
 
@@ -36,6 +42,8 @@ The script checks for required Graph modules and installs missing modules for th
 .\Invoke-M365LicenseManagement.ps1 -PilotUserCsv .\pilot.csv
 .\Invoke-M365LicenseManagement.ps1 -PilotGroupId 00000000-0000-0000-0000-000000000000 -DisabledPlansMode Preserve
 .\Invoke-M365LicenseManagement.ps1 -OutputFolder C:\Reports\M365Licenses -IncludeDisabledAccounts
+.\Invoke-M365LicenseManagement.ps1 -PilotUserCsv .\pilot.csv -WhatIf
+.\Invoke-M365LicenseManagement.ps1 -BatchSize 10 -BatchPauseSeconds 15 -MaxRetryCount 6
 ```
 
 ## Menu Options
@@ -50,7 +58,7 @@ The script checks for required Graph modules and installs missing modules for th
 
 The script writes CSV reports, JSON rollback backups, and timestamped log files to `OutputFolder`.
 
-License replacement always creates a pre-check CSV and a JSON backup before changes are made. The operator must type `EXECUTE` before any replacement is applied. Restore operations require typing `RESTORE` before the backup is replayed.
+License replacement always creates a pre-check CSV and a JSON backup before changes are made, except when `-WhatIf` is used. The operator must type `EXECUTE` before any replacement is applied. Restore operations require typing `RESTORE` before the backup is replayed.
 
 ## Safety Notes
 

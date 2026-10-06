@@ -26,6 +26,7 @@
         (enabled in the source, not provided by the target or by any
         other SKU still assigned to the user);
       - always produces a pre-check CSV and a JSON backup before any change;
+      - supports -WhatIf for a formal dry-run without writes;
       - makes no change until the operator types EXECUTE;
       - produces a result CSV and a log file.
 
@@ -53,6 +54,23 @@
 .PARAMETER IncludeInactiveSkus
     Also list SKUs whose CapabilityStatus is not Enabled/Warning (e.g. Suspended).
 
+.PARAMETER MaxRetryCount
+    Number of retries for transient Microsoft Graph errors such as throttling
+    and temporary service failures.
+
+.PARAMETER RetryBaseDelaySeconds
+    Base delay used for exponential backoff between Graph retries.
+
+.PARAMETER RequestDelayMilliseconds
+    Delay after each write operation to reduce Graph request pressure.
+
+.PARAMETER BatchSize
+    Number of write operations to perform before pausing. Use 0 to disable
+    batch pauses.
+
+.PARAMETER BatchPauseSeconds
+    Pause after each completed batch of write operations.
+
 .NOTES
     Microsoft Graph delegated permissions (least privilege):
       User.Read.All                    - read users and their licenses
@@ -72,7 +90,7 @@
     ./Invoke-M365LicenseManagement.ps1 -PilotGroupId 00000000-0000-0000-0000-000000000000 -DisabledPlansMode Preserve
 #>
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
     [string]$OutputFolder = (Join-Path $PWD "LicenseManagementOutput"),
 
@@ -85,10 +103,26 @@ param(
 
     [switch]$IncludeDisabledAccounts,
 
-    [switch]$IncludeInactiveSkus
+    [switch]$IncludeInactiveSkus,
+
+    [ValidateRange(0, 10)]
+    [int]$MaxRetryCount = 4,
+
+    [ValidateRange(1, 300)]
+    [int]$RetryBaseDelaySeconds = 2,
+
+    [ValidateRange(0, 60000)]
+    [int]$RequestDelayMilliseconds = 250,
+
+    [ValidateRange(0, 1000)]
+    [int]$BatchSize = 20,
+
+    [ValidateRange(0, 3600)]
+    [int]$BatchPauseSeconds = 10
 )
 
 $ErrorActionPreference = "Stop"
+$script:ScriptCmdlet = $PSCmdlet
 
 # ---------------------------------------------------------------------------
 # Initialization
@@ -153,6 +187,162 @@ function Export-LicenseReport {
             -NoTypeInformation `
             -Encoding $script:CsvEncoding `
             -Delimiter ";"
+}
+
+function Get-GraphErrorStatusCode {
+    param(
+        [Parameter(Mandatory)]
+        [object]$ErrorRecord
+    )
+
+    $exception = $ErrorRecord.Exception
+
+    foreach ($propertyName in @("ResponseStatusCode", "StatusCode")) {
+        if ($exception.PSObject.Properties.Name -contains $propertyName -and $null -ne $exception.$propertyName) {
+            return [int]$exception.$propertyName
+        }
+    }
+
+    if ($exception.Response -and $exception.Response.StatusCode) {
+        return [int]$exception.Response.StatusCode
+    }
+
+    return $null
+}
+
+function Get-GraphRetryAfterSeconds {
+    param(
+        [Parameter(Mandatory)]
+        [object]$ErrorRecord
+    )
+
+    $exception = $ErrorRecord.Exception
+    $headerCollections = @()
+
+    foreach ($propertyName in @("ResponseHeaders", "Headers")) {
+        if ($exception.PSObject.Properties.Name -contains $propertyName -and $null -ne $exception.$propertyName) {
+            $headerCollections += $exception.$propertyName
+        }
+    }
+
+    if ($exception.Response -and $exception.Response.Headers) {
+        $headerCollections += $exception.Response.Headers
+    }
+
+    foreach ($headers in $headerCollections) {
+        $retryAfter = $null
+
+        if ($headers -is [System.Collections.IDictionary] -and $headers.Contains("Retry-After")) {
+            $retryAfter = $headers["Retry-After"]
+        }
+        elseif ($headers.PSObject.Methods.Name -contains "TryGetValues") {
+            $values = $null
+            if ($headers.TryGetValues("Retry-After", [ref]$values)) {
+                $retryAfter = @($values)[0]
+            }
+        }
+
+        if ($retryAfter) {
+            $seconds = 0
+            if ([int]::TryParse([string]$retryAfter, [ref]$seconds)) {
+                return [Math]::Max(1, $seconds)
+            }
+        }
+    }
+
+    return $null
+}
+
+function Test-GraphTransientError {
+    param(
+        [Parameter(Mandatory)]
+        [object]$ErrorRecord
+    )
+
+    $statusCode = Get-GraphErrorStatusCode -ErrorRecord $ErrorRecord
+
+    if ($statusCode -in @(408, 429, 500, 502, 503, 504)) {
+        return $true
+    }
+
+    return ($ErrorRecord.Exception.Message -match "(?i)throttl|too many requests|timeout|temporar|service unavailable")
+}
+
+function Invoke-GraphRequest {
+    param(
+        [Parameter(Mandatory)]
+        [scriptblock]$ScriptBlock,
+
+        [Parameter(Mandatory)]
+        [string]$OperationName
+    )
+
+    for ($attempt = 1; $attempt -le ($MaxRetryCount + 1); $attempt++) {
+        try {
+            return & $ScriptBlock
+        }
+        catch {
+            $isTransient = Test-GraphTransientError -ErrorRecord $_
+
+            if (-not $isTransient -or $attempt -gt $MaxRetryCount) {
+                throw
+            }
+
+            $retryAfter = Get-GraphRetryAfterSeconds -ErrorRecord $_
+            $delay = if ($retryAfter) {
+                $retryAfter
+            }
+            else {
+                [Math]::Min(300, $RetryBaseDelaySeconds * [Math]::Pow(2, ($attempt - 1)))
+            }
+
+            $jitterMilliseconds = Get-Random -Minimum 0 -Maximum 1000
+
+            Write-LicenseLog (
+                "{0} failed with a transient Graph error. Retry {1}/{2} in {3:n1}s. Error: {4}" -f
+                $OperationName,
+                $attempt,
+                $MaxRetryCount,
+                ($delay + ($jitterMilliseconds / 1000)),
+                $_.Exception.Message
+            ) "WARNING"
+
+            Start-Sleep -Seconds $delay
+
+            if ($jitterMilliseconds -gt 0) {
+                Start-Sleep -Milliseconds $jitterMilliseconds
+            }
+        }
+    }
+}
+
+function Wait-LicenseRateLimit {
+    param(
+        [Parameter(Mandatory)]
+        [int]$CompletedOperations,
+
+        [Parameter(Mandatory)]
+        [int]$TotalOperations
+    )
+
+    if ($CompletedOperations -ge $TotalOperations) {
+        return
+    }
+
+    if ($RequestDelayMilliseconds -gt 0) {
+        Start-Sleep -Milliseconds $RequestDelayMilliseconds
+    }
+
+    if ($BatchSize -gt 0 -and $BatchPauseSeconds -gt 0 -and ($CompletedOperations % $BatchSize) -eq 0) {
+        Write-LicenseLog (
+            "Rate limit pause: completed {0}/{1} write operations. Sleeping {2}s." -f
+            $CompletedOperations,
+            $TotalOperations,
+            $BatchPauseSeconds
+        ) "INFO"
+
+        Start-Sleep -Seconds $BatchPauseSeconds
+    }
 }
 
 function Initialize-GraphConnection {
@@ -230,7 +420,9 @@ function Update-SkuCache {
     Write-LicenseLog "Reading the SKUs subscribed by the tenant."
 
     $script:SubscribedSkus = @(
-        Get-MgSubscribedSku -All |
+        Invoke-GraphRequest `
+            -OperationName "Read subscribed SKUs" `
+            -ScriptBlock { Get-MgSubscribedSku -All } |
             Sort-Object SkuPartNumber
     )
 
@@ -487,7 +679,11 @@ function Get-PilotScope {
     }
 
     if ($hasGroup) {
-        $members = @(Get-MgGroupTransitiveMember -GroupId $PilotGroupId.ToString() -All)
+        $members = @(
+            Invoke-GraphRequest `
+                -OperationName "Read transitive members for pilot group $PilotGroupId" `
+                -ScriptBlock { Get-MgGroupTransitiveMember -GroupId $PilotGroupId.ToString() -All }
+        )
 
         foreach ($member in $members) {
             if ($member.AdditionalProperties["@odata.type"] -eq "#microsoft.graph.user") {
@@ -535,18 +731,24 @@ function Get-SkuAssignedUser {
     try {
         # Server-side filter: only users holding the SKU are returned.
         $users = @(
-            Get-MgUser `
-                -All `
-                -Filter "assignedLicenses/any(x:x/skuId eq $SkuId)" `
-                -ConsistencyLevel eventual `
-                -CountVariable userCount `
-                -Property $script:UserProperties
+            Invoke-GraphRequest `
+                -OperationName "Search users with SKU $SkuId" `
+                -ScriptBlock {
+                    Get-MgUser `
+                        -All `
+                        -Filter "assignedLicenses/any(x:x/skuId eq $SkuId)" `
+                        -ConsistencyLevel eventual `
+                        -CountVariable userCount `
+                        -Property $script:UserProperties
+                }
         )
     }
     catch {
         Write-LicenseLog "Server-side filter not available ($($_.Exception.Message)). Falling back to local filtering." "WARNING"
 
-        $allUsers = Get-MgUser -All -Property $script:UserProperties
+        $allUsers = Invoke-GraphRequest `
+            -OperationName "Read all users for local SKU filtering" `
+            -ScriptBlock { Get-MgUser -All -Property $script:UserProperties }
 
         $users = @(
             $allUsers |
@@ -951,6 +1153,11 @@ function Invoke-LicenseReplacement {
         ) "WARNING"
     }
 
+    if ($WhatIfPreference) {
+        Write-LicenseLog "WhatIf is active: pre-check report created; no backup or license changes will be made." "WARNING"
+        return
+    }
+
     # JSON backup of the current assignment, written BEFORE any change.
     $backupPath = Join-Path $OutputFolder (
         "LicenseReplacement_Backup_{0}_to_{1}_{2}.json" -f
@@ -1028,12 +1235,38 @@ function Invoke-LicenseReplacement {
 
             if ($item.AlreadyHasTarget) {
                 # The user already holds the target: remove only the source.
-                Set-MgUserLicense `
-                    -UserId $item.UserId `
-                    -AddLicenses @() `
-                    -RemoveLicenses @($sourceSku.SkuId) `
-                    -Confirm:$false |
-                    Out-Null
+                if (-not $script:ScriptCmdlet.ShouldProcess($item.UserPrincipalName, "Remove source license $($sourceSku.SkuPartNumber)")) {
+                    [PSCustomObject]@{
+                        DisplayName         = $item.DisplayName
+                        UserPrincipalName   = $item.UserPrincipalName
+                        SourceSku           = $sourceSku.SkuPartNumber
+                        TargetSku           = $targetSku.SkuPartNumber
+                        Operation           = "SkippedByShouldProcess"
+                        Status              = "Skipped"
+                        SourceStillAssigned = $null
+                        TargetAssigned      = $null
+                        MissingOtherSkus    = $null
+                        TargetDisabledPlans = $item.TargetDisabledPlans
+                        LostServicePlans    = $item.LostServicePlans
+                        FinalLicenses       = $null
+                        Error               = $null
+                        StartedAt           = $startedAt
+                        CompletedAt         = Get-Date
+                    }
+
+                    continue
+                }
+
+                Invoke-GraphRequest `
+                    -OperationName "Remove source license from $($item.UserPrincipalName)" `
+                    -ScriptBlock {
+                        Set-MgUserLicense `
+                            -UserId $item.UserId `
+                            -AddLicenses @() `
+                            -RemoveLicenses @($sourceSku.SkuId) `
+                            -Confirm:$false |
+                            Out-Null
+                    }
 
                 $operation = "RemovedSource-TargetAlreadyAssigned"
             }
@@ -1051,20 +1284,50 @@ function Invoke-LicenseReplacement {
                     }
                 )
 
-                Set-MgUserLicense `
-                    -UserId $item.UserId `
-                    -AddLicenses $licenseToAdd `
-                    -RemoveLicenses @($sourceSku.SkuId) `
-                    -Confirm:$false |
-                    Out-Null
+                if (-not $script:ScriptCmdlet.ShouldProcess($item.UserPrincipalName, "Add target license $($targetSku.SkuPartNumber) and remove source license $($sourceSku.SkuPartNumber)")) {
+                    [PSCustomObject]@{
+                        DisplayName         = $item.DisplayName
+                        UserPrincipalName   = $item.UserPrincipalName
+                        SourceSku           = $sourceSku.SkuPartNumber
+                        TargetSku           = $targetSku.SkuPartNumber
+                        Operation           = "SkippedByShouldProcess"
+                        Status              = "Skipped"
+                        SourceStillAssigned = $null
+                        TargetAssigned      = $null
+                        MissingOtherSkus    = $null
+                        TargetDisabledPlans = $item.TargetDisabledPlans
+                        LostServicePlans    = $item.LostServicePlans
+                        FinalLicenses       = $null
+                        Error               = $null
+                        StartedAt           = $startedAt
+                        CompletedAt         = Get-Date
+                    }
+
+                    continue
+                }
+
+                Invoke-GraphRequest `
+                    -OperationName "Replace license for $($item.UserPrincipalName)" `
+                    -ScriptBlock {
+                        Set-MgUserLicense `
+                            -UserId $item.UserId `
+                            -AddLicenses $licenseToAdd `
+                            -RemoveLicenses @($sourceSku.SkuId) `
+                            -Confirm:$false |
+                            Out-Null
+                    }
 
                 $operation = "AddedTarget-And-RemovedSource"
             }
 
             # Post-operation verification.
-            $updatedUser = Get-MgUser `
-                -UserId $item.UserId `
-                -Property @("id", "displayName", "userPrincipalName", "assignedLicenses")
+            $updatedUser = Invoke-GraphRequest `
+                -OperationName "Verify license replacement for $($item.UserPrincipalName)" `
+                -ScriptBlock {
+                    Get-MgUser `
+                        -UserId $item.UserId `
+                        -Property @("id", "displayName", "userPrincipalName", "assignedLicenses")
+                }
 
             $updatedSkuIds = @(
                 $updatedUser.AssignedLicenses |
@@ -1112,6 +1375,8 @@ function Invoke-LicenseReplacement {
                 StartedAt           = $startedAt
                 CompletedAt         = Get-Date
             }
+
+            Wait-LicenseRateLimit -CompletedOperations $counter -TotalOperations $eligibleUsers.Count
         }
         catch {
             Write-LicenseLog (
@@ -1229,6 +1494,11 @@ function Restore-LicenseBackup {
     Write-Host "The target license will be removed ONLY where it was added by the script."
     Write-Host ""
 
+    if ($WhatIfPreference) {
+        Write-LicenseLog "WhatIf is active: restore preview completed; no license changes will be made." "WARNING"
+        return
+    }
+
     $confirmation = Read-Host "Type RESTORE to proceed"
 
     if ($confirmation -cne "RESTORE") {
@@ -1236,7 +1506,11 @@ function Restore-LicenseBackup {
         return
     }
 
+    $counter = 0
+
     $result = foreach ($user in $users) {
+        $counter++
+
         try {
             $originalSource = @($user.OriginalAssignedLicenses) |
                 Where-Object { $_.SkuId -eq $sourceSkuId } |
@@ -1255,12 +1529,26 @@ function Restore-LicenseBackup {
                 $licensesToRemove = @($targetSkuId)
             }
 
-            Set-MgUserLicense `
-                -UserId $user.UserId `
-                -AddLicenses $licenseToAdd `
-                -RemoveLicenses $licensesToRemove `
-                -Confirm:$false |
-                Out-Null
+            if (-not $script:ScriptCmdlet.ShouldProcess($user.UserPrincipalName, "Restore source license $($backup.SourceSkuPartNumber) from backup")) {
+                [PSCustomObject]@{
+                    UserPrincipalName = $user.UserPrincipalName
+                    Status            = "Skipped"
+                    Error             = $null
+                }
+
+                continue
+            }
+
+            Invoke-GraphRequest `
+                -OperationName "Restore licenses for $($user.UserPrincipalName)" `
+                -ScriptBlock {
+                    Set-MgUserLicense `
+                        -UserId $user.UserId `
+                        -AddLicenses $licenseToAdd `
+                        -RemoveLicenses $licensesToRemove `
+                        -Confirm:$false |
+                        Out-Null
+                }
 
             Write-LicenseLog "Restored $($user.UserPrincipalName)." "SUCCESS"
 
@@ -1279,6 +1567,8 @@ function Restore-LicenseBackup {
                 Error             = $_.Exception.Message
             }
         }
+
+        Wait-LicenseRateLimit -CompletedOperations $counter -TotalOperations $users.Count
     }
 
     $resultPath = Join-Path $OutputFolder ("LicenseRestore_Result_{0}.csv" -f $script:TimeStamp)
