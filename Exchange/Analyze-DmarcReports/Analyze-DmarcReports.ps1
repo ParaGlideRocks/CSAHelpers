@@ -439,11 +439,11 @@ if ($hasExcel) {
 
     if ($sourcesToReview.Count -gt 0) {
         $sourcesToReview |
-            Export-Excel -Path $OutFile -WorksheetName "SourcesToReview" -AutoSize -FreezeTopRow -BoldTopRow -AutoFilter
+            Export-Excel -Path $OutFile -WorksheetName "SourcesToReview" -AutoSize -FreezeTopRow -BoldTopRow -AutoFilter -NoNumberConversion SourceIP
     }
 
     $details | Sort-Object PeriodFrom -Descending |
-        Export-Excel -Path $OutFile -WorksheetName "Details" -AutoSize -FreezeTopRow -BoldTopRow -AutoFilter
+        Export-Excel -Path $OutFile -WorksheetName "Details" -AutoSize -FreezeTopRow -BoldTopRow -AutoFilter -NoNumberConversion SourceIP
 
     Write-Host "`nExcel file generated: $OutFile" -ForegroundColor Green
 }
