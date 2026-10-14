@@ -13,8 +13,9 @@
     Path to the input CSV file. Must contain a "Domain" column.
 
 .PARAMETER OutputPath
-    Path for the JSON output file. Defaults to a timestamp-prefixed file name
-    like "yyyyMMdd-HHmmss_DNSRecordsExport.json" in the same directory as the CSV.
+    Path for the JSON output file, or a directory where a timestamp-prefixed
+    JSON file should be created. Defaults to a file name like
+    "yyyyMMdd-HHmmss_DNSRecordsExport.json" in the same directory as the CSV.
 
 .PARAMETER DnsServer
     Optional DNS server used as a bootstrap resolver for NS discovery and as
@@ -145,11 +146,34 @@ function Join-TxtStrings {
     ($Record.Strings -join '').Trim()
 }
 
+function New-DnsRecordsOutputFileName {
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    "${timestamp}_DNSRecordsExport.json"
+}
+
 # Set default output path next to the CSV
 if (-not $OutputPath) {
     $csvDir  = Split-Path -Parent (Resolve-Path $CsvPath)
-    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-    $OutputPath = Join-Path $csvDir ("${timestamp}_DNSRecordsExport.json")
+    $OutputPath = Join-Path $csvDir (New-DnsRecordsOutputFileName)
+}
+else {
+    $resolvedOutputPath = Resolve-Path -LiteralPath $OutputPath -ErrorAction SilentlyContinue
+
+    if ($resolvedOutputPath -and (Test-Path -LiteralPath $resolvedOutputPath.Path -PathType Container)) {
+        $OutputPath = Join-Path $resolvedOutputPath.Path (New-DnsRecordsOutputFileName)
+    }
+    else {
+        $outputDirectory = Split-Path -Parent $OutputPath
+
+        if ([string]::IsNullOrWhiteSpace($outputDirectory)) {
+            $outputDirectory = (Get-Location).Path
+        }
+
+        if (-not (Test-Path -LiteralPath $outputDirectory -PathType Container)) {
+            Write-Error "Output directory does not exist: $outputDirectory"
+            exit 1
+        }
+    }
 }
 
 $domains = Import-Csv -Path $CsvPath
