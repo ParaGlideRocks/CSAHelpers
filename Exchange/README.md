@@ -10,6 +10,7 @@ This directory contains PowerShell scripts for managing and auditing Microsoft E
 - [Export-DNSReport](Export-DNSReport/README.md)
 - [Export-ExchangeConfig](Export-ExchangeConfig/README.md)
 - [Get-EXOBasicAuthReport](Get-EXOBasicAuthReport/README.md)
+- [Get-M365RetentionConfiguration](Get-M365RetentionConfiguration/README.md)
 - [New-RoomMailboxes](New-RoomMailboxes/README.md)
 - [Remove-InvalidSMTP](Remove-InvalidSMTP/README.md)
 - [Start-EXOMigrationBatch](Start-EXOMigrationBatch/README.md)
